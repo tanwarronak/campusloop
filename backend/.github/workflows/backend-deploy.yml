@@ -1,0 +1,105 @@
+name: CampusLoop Backend CI/CD
+
+on:
+  push:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+jobs:
+  # ==========================================
+  # 1. CI - Install, Test and Validate
+  # ==========================================
+  test:
+    name: Test Backend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Check application syntax
+        run: npm run check
+        continue-on-error: true
+
+
+  # ==========================================
+  # 2. CD - Deploy to Azure VM
+  # ==========================================
+  deploy:
+    name: Deploy Backend to Azure VM
+    runs-on: ubuntu-latest
+
+    needs: test
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      # ----------------------------------------
+      # Setup SSH
+      # ----------------------------------------
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+
+          echo "${{ secrets.VM_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+
+          chmod 600 ~/.ssh/id_rsa
+
+          ssh-keyscan -H "${{ secrets.VM_HOST }}" >> ~/.ssh/known_hosts
+
+      # ----------------------------------------
+      # Deploy application
+      # ----------------------------------------
+      - name: Deploy to Azure VM
+        run: |
+          ssh "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}" << 'EOF'
+
+            set -e
+
+            echo "======================================"
+            echo "Starting CampusLoop Backend Deployment"
+            echo "======================================"
+
+            cd /home/azureuser/campusloop
+
+            echo "Pulling latest code..."
+
+            git fetch origin
+            git reset --hard origin/main
+
+            echo "Installing dependencies..."
+
+            npm ci --omit=dev
+
+            echo "Restarting backend..."
+
+            pm2 reload campusloop-backend --update-env
+
+            echo "Saving PM2 process list..."
+
+            pm2 save
+
+            echo "Checking application status..."
+
+            pm2 status
+
+            echo "======================================"
+            echo "Deployment completed successfully"
+            echo "======================================"
+
+          EOF
