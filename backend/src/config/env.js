@@ -7,8 +7,8 @@ dotenv.config();
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.coerce.number().default(5000),
-  CLIENT_URL: z.string().default('http://localhost:5173'),
-  MONGODB_URI: z.string().default('mongodb://localhost:27017/campusloop'),
+  CLIENT_URL: z.string().default('https://campusloop.shop'),
+  MONGODB_URI: z.string().default('mongodb+srv://<db_username>:oyzvcGcbsBXYzCq1@cluster0.6cpshfe.mongodb.net/campusloop'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
   SESSION_SECRET: z.string().min(16).default('dev_session_secret_default_change_in_production'),
   GOOGLE_CLIENT_ID: z.string().optional(),
